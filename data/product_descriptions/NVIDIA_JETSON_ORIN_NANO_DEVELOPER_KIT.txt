@@ -1,0 +1,8 @@
+Product: NVIDIA JETSON ORIN NANO DEVELOPER KIT
+Category: NVIDIA Electronics
+Price: $499.95
+Description: The NVIDIA® Jetson Orin™ Nano Developer Kit sets a new standard for creating entry-level AI-powered robots, smart drones, and intelligent cameras. Compact design, lots of connectors, and up to 40 TOPS of AI performance deliver everything you need to transform your visionary concepts into reality.
+
+With up to 80X the performance of Jetson Nano, the developer kit can run all modern AI models, including those for transformer and advanced robotics. It features a Jetson Orin Nano 8GB module, a reference carrier board that can accommodate all Orin Nano and Orin NX modules, and the power to run the entire NVIDIA AI software stack. This gives you the ideal platform for prototyping your next-gen edge AI solution.
+
+Get started with your AI journey!

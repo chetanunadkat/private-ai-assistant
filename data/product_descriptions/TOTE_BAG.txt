@@ -1,0 +1,8 @@
+Product: TOTE BAG
+Category: Bags
+Price: $9.0
+Description: Cotton canvas tote bag.
+
+Product Details:
+
+15" W x 16" H

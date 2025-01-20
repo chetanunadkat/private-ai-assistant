@@ -13,13 +13,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from vanna.base import VannaBase
-from src.common.utils import get_llm
+from langchain_openai import ChatOpenAI
+import os
 
 
-class NvidiaLLM(VannaBase):
+class VannaLLM(VannaBase):
     def __init__(self, config=None):
         default_llm_kwargs = {"temperature": 0.2, "top_p": 0.7, "max_tokens": 1024}
-        self.model = get_llm(**default_llm_kwargs)
+        self.model = ChatOpenAI(
+            model="gpt-4o-2024-05-13", 
+            api_key=os.environ["OPENAI_API_KEY"], 
+            **default_llm_kwargs
+        )
 
     def system_message(self, message: str) -> any:
         return {"role": "system", "content": message}

@@ -1,0 +1,8 @@
+Product: NVIDIA® GEFORCE RTX™ 4070 SUPER
+Category: NVIDIA Electronics
+Price: $799.0
+Description: Product Description: Get equipped for supercharged gaming and creating with the NVIDIA® GeForce RTX™ 4070 SUPER. It’s built with the ultra-efficient NVIDIA Ada Lovelace architecture. Experience super-fast ray tracing, AI-accelerated performance with DLSS 3, new ways to create, and much more.
+
+CUDA Cores: 7168
+Boost Clock: 2.48 GHz
+Memory Configuration: 12GB GDDR6X

@@ -1,0 +1,12 @@
+Product: RULER
+Category: Office
+Price: $4.0
+Description: Made from standard FR4 dielectric with an ENIG plating finish, this ruler is designed to be an engineer's best friend
+
+Some features include:
+
+RLCs (Resistors, Inductors and Capacitors), Mosfets and Crystals
+Formula quick guide
+Footprints for some advanced packages, including memories and some ICs
+
+All bulk orders must be charged through a cost center and submitted via a Purchase Requisition (PR) through Coupa or NVIDIA IBR. 

@@ -1,0 +1,15 @@
+Product: RULER 2.0
+Category: Office
+Price: $13.5
+Description: The new Ruler 2.0 highlights the Geforce RTX.
+
+ Features include:
+
+35cm/12in ruler (1mm edge to first marker)
+Image from Geforce RTX 2080Ti PCB
+RLCs (Resistors, Inductors and Capacitors), Mosfets and Crystals
+Gold color is ENIG (Electroless Nickel Immersion Gold)
+Endeavor symbol
+Simulated break-off tab of a PCB
+Holes to facilitate hanging
+Unique Serial Numbers

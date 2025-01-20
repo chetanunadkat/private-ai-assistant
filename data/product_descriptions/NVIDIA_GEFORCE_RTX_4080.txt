@@ -1,0 +1,9 @@
+Product: NVIDIA® GEFORCE RTX™ 4080
+Category: NVIDIA Electronics
+Price: $1199.0
+Description: The NVIDIA® GeForce RTX™ 4080 delivers the ultra performance and features that enthusiast gamers and creators demand. Bring your games and creative projects to life with ray tracing and AI-powered graphics. It's powered by the ultra-efficient NVIDIA Ada Lovelace architecture and 16GB of superfast G6X memory.
+
+CUDA Cores: 9728
+Boost Clock: 2.51 GHz
+Memory Configuration: 16GB GDDR6X
+Please refer to the graphics card comparison page for a full list of specifications: https://www.nvidia.com/en-us/geforce/graphics-cards/compare/

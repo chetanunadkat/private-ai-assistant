@@ -26,16 +26,15 @@ from pydantic import BaseModel, Field
 
 from src.retrievers.base import BaseExample
 from src.common.utils import (
+    get_text_splitter,
+    get_vectorstore,
+    get_embedding_model,
+    get_llm,
     create_vectorstore_langchain,
     del_docs_vectorstore_langchain,
     get_config,
     get_docs_vectorstore_langchain,
-    get_embedding_model,
     get_prompts,
-    get_llm,
-    get_text_splitter,
-    get_vectorstore,
-    get_ranking_model
 )
 
 logger = logging.getLogger(__name__)
@@ -90,87 +89,28 @@ class UnstructuredRetriever(BaseExample):
             raise ValueError("Failed to upload document. Please upload an unstructured text document.")
 
 
-    def document_search(self, content: str, num_docs: int, conv_history: Dict[str, str] = {}) -> List[Dict[str, Any]]:
-        """Search for the most relevant documents for the given search parameters.
-        It's called when the `/search` API is invoked.
-
-        Args:
-            content (str): Query to be searched from vectorstore.
-            num_docs (int): Number of similar docs to be retrieved from vectorstore.
+    def document_search(self, content: str, num_docs: int, user_id: str = None, conv_history: Dict[str, str] = {}) -> List[Dict[str, Any]]:
         """
-
-        logger.info(f"Searching relevant document for the query: {content}")
-
+        Search for relevant documents based on the query.
+        Args:
+            content: Query string
+            num_docs: Number of documents to return
+            user_id: Optional user ID for tracking
+            conv_history: Optional conversation history
+        Returns:
+            List of relevant documents
+        """
         try:
+            logger.info(f"Searching relevant document for the query: {content}")
             vs = get_vectorstore(vectorstore, document_embedder)
-            if vs == None:
-                logger.error(f"Vector store not initialized properly. Please check if the vector db is up and running")
-                raise ValueError()
-
-            docs = []
-            ranker = get_ranking_model()
-            top_k = vector_db_top_k if ranker else num_docs
-            logger.info(f"Setting top k as: {top_k}.")
-            retriever = vs.as_retriever(search_kwargs={"k": top_k}) # milvus does not support similarily threshold
-
-            # Invoke query rewriting to decontextualize the query before sending to retriever pipeline if conv history is passed
-            if conv_history:
-                class Question(BaseModel):
-                    question: str = Field(..., description="A standalone question which can be understood without the chat history")
-
-                parsed_conv_history = [(msg.get("role"), msg.get("content")) for msg in conv_history]
-                default_llm_kwargs = {"temperature": 0.2, "top_p": 0.7, "max_tokens": 1024}
-                llm = get_llm(**default_llm_kwargs)
-                llm = llm.with_structured_output(Question)
-                query_rewriter_prompt = prompts.get("query_rewriting")
-                contextualize_q_prompt = ChatPromptTemplate.from_messages(
-                    [("system", query_rewriter_prompt), MessagesPlaceholder("chat_history"), ("human", "{input}"),]
-                )
-                q_prompt = contextualize_q_prompt | llm 
-                logger.info(f"Query rewriter prompt: {contextualize_q_prompt}")
-                response = q_prompt.invoke({"input": content, "chat_history": parsed_conv_history})
-                content = response.question
-                logger.info(f"Rewritten Query: {content}")
-                if content.replace('"', "'") == "''" or len(content) == 0:
-                    return []
-
-            if ranker:
-                logger.info(f"Narrowing the collection from {top_k} results and further narrowing it to {num_docs} with the reranker for rag chain.")
-                # Update number of document to be retriever by ranker
-                ranker.top_n = num_docs
-
-                context_reranker = RunnableAssign({"context": lambda input: ranker.compress_documents(query=input['question'], documents=input['context'])})
-
-                retriever = {"context": retriever, "question": RunnablePassthrough()} | context_reranker
-                docs = retriever.invoke(content)
-                resp = []
-                for doc in docs.get("context"):
-                    resp.append(
-                            {
-                                "source": os.path.basename(doc.metadata.get("source", "")),
-                                "content": doc.page_content,
-                                "score": doc.metadata.get("relevance_score", 0)
-                            }
-                    )
-                return resp
-            else:
-                docs = retriever.invoke(content)
-                resp = []
-                for doc in docs:
-                    resp.append(
-                            {
-                                "source": os.path.basename(doc.metadata.get("source", "")),
-                                "content": doc.page_content,
-                                "score": doc.metadata.get("relevance_score", 0)
-                            }
-                    )
-                return resp
-
+            if vs is None:
+                logger.error("Vector store not initialized properly")
+                return []
+            docs = vs.similarity_search_with_score(content, k=num_docs)
+            return [{"content": doc[0].page_content, "source": os.path.basename(doc[0].metadata.get("source", "")), "score": doc[1]} for doc in docs]
         except Exception as e:
-            logger.warning(f"Failed to generate response due to exception {e}")
-            print_exc()
-
-        return []
+            logger.warning(f"Failed to generate response due to exception {str(e)}")
+            return []
 
 
     def get_documents(self) -> List[str]:

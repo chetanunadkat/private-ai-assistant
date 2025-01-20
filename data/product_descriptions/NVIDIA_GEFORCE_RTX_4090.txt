@@ -1,0 +1,10 @@
+Product: NVIDIA® GEFORCE RTX™ 4090
+Category: NVIDIA Electronics
+Price: $1599.0
+Description: The NVIDIA® GeForce RTX® 4090 is the ultimate GeForce GPU. It brings an enormous leap in performance, efficiency, and AI-powered graphics. Experience ultra-high performance gaming, incredibly detailed virtual worlds, unprecedented productivity, and new ways to create. It’s powered by the NVIDIA Ada Lovelace architecture and comes with 24 GB of G6X memory to deliver the ultimate experience for gamers and creators.
+
+CUDA Cores: 16384
+Boost Clock: 2.52 GHz
+Memory Configuration: 24GB GDDR6X
+ 
+Please refer to the graphics card comparison page for a full list of specifications: https://www.nvidia.com/en-us/geforce/graphics-cards/compare/

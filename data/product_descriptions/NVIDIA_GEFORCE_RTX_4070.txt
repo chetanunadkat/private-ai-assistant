@@ -1,0 +1,9 @@
+Product: NVIDIA® GEFORCE RTX™ 4070
+Category: NVIDIA Electronics
+Price: $599.0
+Description: Get equipped for stellar gaming and creating with the NVIDIA® GeForce RTX™ 4070. It’s built with the ultra-efficient NVIDIA Ada Lovelace architecture. Experience fast ray tracing, AI-accelerated performance with DLSS 3, new ways to create, and much more.  
+
+CUDA Cores: 5888
+Boost Clock: 2.48 GHz
+Memory Configuration: 12GB GDDR6X
+Model 900-1G141-2544-000

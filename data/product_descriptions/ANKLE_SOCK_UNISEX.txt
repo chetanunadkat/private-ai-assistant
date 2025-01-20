@@ -1,0 +1,5 @@
+Product: ANKLE SOCK UNISEX
+Category: Apparel
+Price: $12.0
+Description: 80% cotton/15% nylon/5% spandex
+Sizing: Men's 9 - 11

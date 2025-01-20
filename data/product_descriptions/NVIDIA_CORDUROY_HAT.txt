@@ -1,0 +1,7 @@
+Product: NVIDIA CORDUROY HAT
+Category: Apparel
+Price: $18.0
+Description: 100% cotton corduroy
+6-panel
+Unstructured
+Low-profile

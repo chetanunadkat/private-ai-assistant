@@ -21,24 +21,24 @@ import os
 import pandas as pd
 from jinja2 import Template
 from typing import Union
-from src.retrievers.structured_data.vaanaai.utils import NVIDIAEmbeddingsWrapper
-from src.retrievers.structured_data.vaanaai.vaana_llm import NvidiaLLM
+from src.retrievers.structured_data.vaanaai.utils import OpenAIEmbeddingsWrapper
+from src.retrievers.structured_data.vaanaai.vaana_llm import VannaLLM
 from src.common.utils import get_embedding_model, get_config, get_prompts
 
 logger = logging.getLogger(__name__)
 prompts = get_prompts()
 
-class VannaWrapper(Milvus_VectorStore, NvidiaLLM):
+class VannaWrapper(Milvus_VectorStore, VannaLLM):
     def __init__(self, config=None):
-        logger.info("Initializing MyVanna with NvidiaLLM and Milvus_VectorStore")
+        logger.info("Initializing MyVanna with VannaLLM and Milvus_VectorStore")
         document_embedder = get_embedding_model()
-        emb_function = NVIDIAEmbeddingsWrapper(document_embedder)
+        emb_function = OpenAIEmbeddingsWrapper(document_embedder)
         settings = get_config()
         if settings.vector_store.name == "milvus":
             milvus_db_url = settings.vector_store.url
         milvus_client = MilvusClient(uri=milvus_db_url)
         Milvus_VectorStore.__init__(self, config={"embedding_function": emb_function, "milvus_client": milvus_client})
-        NvidiaLLM.__init__(self, config=config)
+        VannaLLM.__init__(self, config=config)
 
     def connect_to_postgres(
         self,
@@ -172,14 +172,14 @@ class VannaWrapper(Milvus_VectorStore, NvidiaLLM):
         """
         Checks if the SQL query is valid. This function validates that the query:
         - Is a SELECT statement.
-        - Contains a WHERE clause filtering on the given customer_id.
+        - Contains a WHERE clause filtering on the given customer_id (except for schema queries).
     
         Args:
             sql (str): The SQL query to check.
             customer_id (str): The customer_id to validate in the WHERE clause.
     
         Returns:
-            bool: True if the SQL query is valid and contains a matching customer_id filter, False otherwise.
+            bool: True if the SQL query is valid and contains a matching customer_id filter (or is a schema query), False otherwise.
         """
         parsed = sqlparse.parse(sql)
         sql_validation = False
@@ -193,6 +193,13 @@ class VannaWrapper(Milvus_VectorStore, NvidiaLLM):
     
                 # Convert the statement to a string for regex-based parsing
                 statement_str = str(statement)
+
+                # Check if it's a schema query (querying information_schema or table structure)
+                schema_keywords = ['information_schema', 'table_schema', 'column_name', 'data_type', 'table_name']
+                if any(keyword in statement_str.lower() for keyword in schema_keywords):
+                    logger.info("Schema query detected, bypassing customer_id validation")
+                    customer_id_validation = True
+                    continue
 
                 # Check if there's a WHERE clause with the specified customer_id filter
                 where_clause_match = re.search(r"WHERE\s+.*customer_id\s*=\s*['\"]?" + re.escape(str(customer_id)) + r"['\"]?", statement_str, re.IGNORECASE)

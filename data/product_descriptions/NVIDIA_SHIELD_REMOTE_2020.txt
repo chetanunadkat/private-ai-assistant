@@ -1,0 +1,9 @@
+Product: NVIDIA® SHIELD™ REMOTE (2020)
+Category: NVIDIA Electronics
+Price: $54.99
+Description: Motion-activated, backlit buttons
+Mic for voice search and control
+Bluetooth connectivity
+IR for TV control
+Built-in lost remote locator
+930-13700-2500-100

@@ -1,0 +1,4 @@
+Product: NVIDIA® SHIELD™ TV PRO 2019
+Category: NVIDIA Electronics
+Price: $199.99
+Description: NVIDIA® SHIELD® TV Pro is the supreme streaming media player - packed with features to make even the most demanding users proud. Beautifully designed to be the perfect centerpiece of your entertainment center. Enjoy a cinematic experience with stunning visuals brought to you by Dolby Vision HDR, and immersive audio with Dolby Atmos surround sound. Now powered by the latest NVIDIA Tegra X1+ processor, SHIELD TV is faster, and smarter. Level up to SHIELD TV Pro for more storage space, two USB 3.0 ports for expandability (storage expansion, USB cameras, USB keyboards and controllers, TV tuners, and more), Plex Media Server, SmartThings hub-ready (just add a SmartThings Link), AAA Android gaming, Twitch broadcasting, and 3GB RAM.

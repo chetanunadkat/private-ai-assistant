@@ -61,35 +61,41 @@ class CSVChatbot(BaseExample):
 
         logger.info("Using document_search to fetch response from database as text")
 
-        # Do training if the static_db_schema is empty
+        # Do training if needed
         vaana_client.do_training(method="ddl")
 
         try:
-            logger.info("Using document_search to fetch response from database as text")
-            if user_id:
-                pass
-            else:
-                logger.warning("Enter a proper User ID")
-                return [{"content": "No response generated, make to give a proper User ID."}]
+            if not user_id:
+                logger.warning("No User ID provided")
+                return [{"content": "Please provide a valid User ID to search for data."}]
 
+            logger.info(f"Querying data for user_id: {user_id} with content: {content}")
             result_df = vaana_client.ask_query(question=content, user_id=user_id)
             
             logger.info("Result Data Frame: %s", result_df)
-            if (
-                (isinstance(result_df, pd.DataFrame) and (
-                    (result_df.shape == (1, 1) and not bool(result_df.iloc[0, 0])) or result_df.empty
-                )) or
-                (isinstance(result_df, str) and result_df == "not valid sql") or
-                (result_df is None)
-                ):
-                logger.warning("Retrieval failed to get any relevant context")
-                raise Exception("No response generated from LLM.")
-
-            result_df = str(result_df).strip()
-            return [{"content": result_df}]
+            
+            # Handle various error cases
+            if result_df is None:
+                return [{"content": "No data found for the given query."}]
+            
+            if isinstance(result_df, str) and result_df == "not valid sql":
+                return [{"content": "Unable to generate a valid SQL query for your request. Please rephrase your question."}]
+            
+            if isinstance(result_df, pd.DataFrame):
+                if result_df.empty:
+                    return [{"content": "No matching records found for your query."}]
+                if result_df.shape == (1, 1) and not bool(result_df.iloc[0, 0]):
+                    return [{"content": "The query returned no results."}]
+                
+                # Format DataFrame as a string with proper formatting
+                result_str = result_df.to_string(index=False)
+                return [{"content": result_str}]
+            
+            return [{"content": str(result_df).strip()}]
+            
         except Exception as e:
             logger.error("An error occurred during document search: %s", str(e))
-            raise  # Re-raise the exception after logging
+            return [{"content": f"An error occurred while processing your request: {str(e)}"}]
 
     def get_documents(self) -> List[str]:
         """Retrieves filenames stored in the vector store."""

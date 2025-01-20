@@ -60,11 +60,11 @@ def get_purchase_history(user_id: str) -> str:
     """Retrieves the recent return and order details for a user,
     including order ID, product name, status, relevant dates, quantity, and amount."""
 
-    SQL_QUERY = f"""
+    SQL_QUERY = """
     SELECT order_id, product_name, order_date, order_status, quantity, order_amount, return_status,
     return_start_date, return_received_date, return_completed_date, return_reason, notes
     FROM public.customer_data
-    WHERE customer_id={user_id}
+    WHERE customer_id=%s
     ORDER BY order_date DESC
     LIMIT 15;
     """
@@ -89,7 +89,7 @@ def get_purchase_history(user_id: str) -> str:
     # Using context manager for connection and cursor
     with psycopg2.connect(**db_params) as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-            cur.execute(SQL_QUERY)
+            cur.execute(SQL_QUERY, (user_id,))
             result = cur.fetchall()
 
     # Returning result as a list of dictionaries

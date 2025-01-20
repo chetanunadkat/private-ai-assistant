@@ -30,9 +30,9 @@ except Exception as e:
     logger.warning(f"Optional module torch not installed.")
 
 try:
-    from langchain.text_splitter import SentenceTransformersTokenTextSplitter
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
 except Exception as e:
-    logger.warning(f"Optional langchain module not installed for SentenceTransformersTokenTextSplitter.")
+    logger.warning(f"Optional langchain module not installed for RecursiveCharacterTextSplitter.")
 
 try:
     from langchain_core.vectorstores import VectorStore
@@ -40,9 +40,9 @@ except Exception as e:
     logger.warning(f"Optional Langchain module langchain_core not installed.")
 
 try:
-    from langchain_nvidia_ai_endpoints import ChatNVIDIA, NVIDIAEmbeddings, NVIDIARerank
+    from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 except Exception as e:
-    logger.error(f"Optional langchain API Catalog connector langchain_nvidia_ai_endpoints not installed.")
+    logger.error(f"Optional OpenAI connector langchain_openai not installed.")
 
 try:
     from langchain_community.vectorstores import PGVector
@@ -58,6 +58,7 @@ try:
 except Exception as e:
     logger.warning(f"Optional faissDB not installed.")
 
+from langchain_community.vectorstores import Milvus as MilvusVectorStore
 
 from langchain_core.embeddings import Embeddings
 from langchain_core.documents.compressor import BaseDocumentCompressor
@@ -140,11 +141,11 @@ def create_vectorstore_langchain(document_embedder, collection_name: str = "") -
             collection_name = os.getenv('COLLECTION_NAME', "vector_db")
         logger.info(f"Using milvus collection: {collection_name}")
         url = urlparse(config.vector_store.url)
-        vectorstore = Milvus(
-            document_embedder,
+        vectorstore = MilvusVectorStore(
+            embedding_function=document_embedder,
             connection_args={"host": url.hostname, "port": url.port},
             collection_name=collection_name,
-            index_params={"index_type": "GPU_IVF_FLAT", "metric_type": "L2", "nlist": config.vector_store.nlist},
+            index_params={"index_type": "IVF_FLAT", "metric_type": "L2", "nlist": config.vector_store.nlist},
             search_params={"nprobe": config.vector_store.nprobe},
             auto_id = True
         )
@@ -171,25 +172,20 @@ def get_llm(**kwargs) -> LLM | SimpleChatModel:
     settings = get_config()
 
     logger.info(f"Using {settings.llm.model_engine} as model engine for llm. Model name: {settings.llm.model_name}")
-    if settings.llm.model_engine == "nvidia-ai-endpoints":
+    if settings.llm.model_engine == "openai":
         unused_params = [key for key in kwargs.keys() if key not in ['temperature', 'top_p', 'max_tokens']]
         if unused_params:
             logger.warning(f"The following parameters from kwargs are not supported: {unused_params} for {settings.llm.model_engine}")
-        if settings.llm.server_url:
-            logger.info(f"Using llm model {settings.llm.model_name} hosted at {settings.llm.server_url}")
-            return ChatNVIDIA(base_url=f"http://{settings.llm.server_url}/v1",
-                            model=settings.llm.model_name,
-                            temperature = kwargs.get('temperature', None),
-                            top_p = kwargs.get('top_p', None),
-                            max_tokens = kwargs.get('max_tokens', None))
-        else:
-            logger.info(f"Using llm model {settings.llm.model_name} from api catalog")
-            return ChatNVIDIA(model=settings.llm.model_name,
-                            temperature = kwargs.get('temperature', None),
-                            top_p = kwargs.get('top_p', None),
-                            max_tokens = kwargs.get('max_tokens', None))
+        logger.info(f"Using OpenAI model {settings.llm.model_name}")
+        return ChatOpenAI(
+            model=settings.llm.model_name,
+            temperature=kwargs.get('temperature', None),
+            top_p=kwargs.get('top_p', None),
+            max_tokens=kwargs.get('max_tokens', None),
+            api_key=os.environ["OPENAI_API_KEY"]
+        )
     else:
-        raise RuntimeError("Unable to find any supported Large Language Model server. Supported engine name is nvidia-ai-endpoints.")
+        raise RuntimeError("Unable to find any supported Large Language Model server. Supported engine name is openai.")
 
 
 @lru_cache
@@ -198,7 +194,13 @@ def get_embedding_model() -> Embeddings:
     settings = get_config()
 
     logger.info(f"Using {settings.embeddings.model_engine} as model engine and {settings.embeddings.model_name} and model for embeddings")
-    if settings.embeddings.model_engine == "huggingface":
+    if settings.embeddings.model_engine == "openai":
+        logger.info(f"Using OpenAI embedding model {settings.embeddings.model_name}")
+        return OpenAIEmbeddings(
+            model=settings.embeddings.model_name,
+            api_key=os.environ["OPENAI_API_KEY"]
+        )
+    elif settings.embeddings.model_engine == "huggingface":
         model_kwargs = {"device": "cpu"}
         if torch.cuda.is_available():
             model_kwargs["device"] = "cuda:0"
@@ -211,52 +213,13 @@ def get_embedding_model() -> Embeddings:
         )
         # Load in a specific embedding model
         return hf_embeddings
-    elif settings.embeddings.model_engine == "nvidia-ai-endpoints":
-        if settings.embeddings.server_url:
-            logger.info(f"Using embedding model {settings.embeddings.model_name} hosted at {settings.embeddings.server_url}")
-            return NVIDIAEmbeddings(base_url=f"http://{settings.embeddings.server_url}/v1", model=settings.embeddings.model_name, truncate="END")
-        else:
-            logger.info(f"Using embedding model {settings.embeddings.model_name} hosted at api catalog")
-            return NVIDIAEmbeddings(model=settings.embeddings.model_name, truncate="END")
     else:
-        raise RuntimeError("Unable to find any supported embedding model. Supported engine is huggingface and nvidia-ai-endpoints.")
+        raise RuntimeError("Unable to find any supported embedding model. Supported engines are openai, huggingface and nvidia-ai-endpoints.")
 
-@lru_cache
-def get_ranking_model() -> BaseDocumentCompressor:
-    """Create the ranking model.
-
-    Returns:
-        BaseDocumentCompressor: Base class for document compressors.
-    """
-
-    settings = get_config()
-
-    try:
-        if settings.ranking.model_engine == "nvidia-ai-endpoints":
-            if settings.ranking.server_url:
-                logger.info(f"Using ranking model hosted at {settings.ranking.server_url}")
-                return NVIDIARerank(
-                    base_url=f"http://{settings.ranking.server_url}/v1", top_n=settings.retriever.top_k, truncate="END"
-                )
-            elif settings.ranking.model_name:
-                logger.info(f"Using ranking model {settings.ranking.model_name} hosted at api catalog")
-                return NVIDIARerank(model=settings.ranking.model_name, top_n=settings.retriever.top_k, truncate="END")
-        else:
-            logger.warning("Unable to find any supported ranking model. Supported engine is nvidia-ai-endpoints.")
-    except Exception as e:
-        logger.error(f"An error occurred while initializing ranking_model: {e}")
-    return None
-
-
-def get_text_splitter() -> SentenceTransformersTokenTextSplitter:
-    """Return the token text splitter instance from langchain."""
-
-    if get_config().text_splitter.model_name:
-        embedding_model_name = get_config().text_splitter.model_name
-
-    return SentenceTransformersTokenTextSplitter(
-        model_name=embedding_model_name,
-        tokens_per_chunk=get_config().text_splitter.chunk_size - 2,
+def get_text_splitter() -> RecursiveCharacterTextSplitter:
+    """Return the text splitter instance from langchain."""
+    return RecursiveCharacterTextSplitter(
+        chunk_size=get_config().text_splitter.chunk_size,
         chunk_overlap=get_config().text_splitter.chunk_overlap,
     )
 

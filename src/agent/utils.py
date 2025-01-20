@@ -31,7 +31,9 @@ from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableLambda
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_core.runnables import RunnablePassthrough
+from langchain.memory import ConversationBufferMemory
 from langgraph.prebuilt import ToolNode
 
 prompts = get_prompts()
@@ -146,89 +148,15 @@ def create_tool_node_with_fallback(tools: list) -> dict:
 
 async def get_checkpointer() -> tuple:
     settings = get_config()
-
-    if settings.checkpointer.name == "postgres":
-        print(f"Using {settings.checkpointer.name} hosted on {settings.checkpointer.url} for checkpointer")
-        db_user = os.environ.get("POSTGRES_USER")
-        db_password = os.environ.get("POSTGRES_PASSWORD")
-        db_name = os.environ.get("POSTGRES_DB")
-        db_uri = f"postgresql://{db_user}:{db_password}@{settings.checkpointer.url}/{db_name}?sslmode=disable"
-        connection_kwargs = {
-            "autocommit": True,
-            "prepare_threshold": 0,
-            "row_factory": dict_row,
-        }
-
-        # Initialize PostgreSQL checkpointer
-        pool = AsyncConnectionPool(
-            conninfo=db_uri,
-            min_size=2,
-            kwargs=connection_kwargs,
-        )
-        checkpointer = AsyncPostgresSaver(pool)
-        await checkpointer.setup()
-        return checkpointer, pool
-    elif settings.checkpointer.name == "inmemory":
-        print(f"Using MemorySaver as checkpointer")
-        return MemorySaver(), None
-    else:
-        raise ValueError(f"Only inmemory and postgres is supported chckpointer type")
+    print(f"Using MemorySaver as checkpointer")
+    return MemorySaver(), None
 
 
 def remove_state_from_checkpointer(session_id):
+    # For in-memory checkpointer we just need to reinitialize the memory
+    global memory
+    memory = MemorySaver()
 
-    settings = get_config()
-    if settings.checkpointer.name == "postgres":
-        # Handle cleanup for PostgreSQL checkpointer
-        # Currently, there is no langgraph checkpointer API to remove data directly.
-        # The following tables are involved in storing checkpoint data:
-        # - checkpoint_blobs
-        # - checkpoint_writes
-        # - checkpoints
-        # Note: checkpoint_migrations table can be skipped for deletion.
-        try:
-            app_database_url = settings.checkpointer.url
-
-            # Parse the URL
-            parsed_url = urlparse(f"//{app_database_url}", scheme='postgres')
-
-            # Extract host and port
-            host = parsed_url.hostname
-            port = parsed_url.port
-
-            # Connect to your PostgreSQL database
-            connection = psycopg2.connect(
-                dbname=os.getenv('POSTGRES_DB', None),
-                user=os.getenv('POSTGRES_USER', None),
-                password=os.getenv('POSTGRES_PASSWORD', None),
-                host=host,
-                port=port
-            )
-            cursor = connection.cursor()
-
-            # Execute delete commands
-            cursor.execute("DELETE FROM checkpoint_blobs WHERE thread_id = %s", (session_id,))
-            cursor.execute("DELETE FROM checkpoint_writes WHERE thread_id = %s", (session_id,))
-            cursor.execute("DELETE FROM checkpoints WHERE thread_id = %s", (session_id,))
-
-            # Commit the changes
-            connection.commit()
-            logger.info(f"Deleted rows with thread_id: {session_id}")
-
-        except Exception as e:
-            logger.info(f"Error occurred while deleting data from checkpointer: {e}")
-            # Optionally rollback if needed
-            if connection:
-                connection.rollback()
-        finally:
-            # Close the cursor and connection
-            if cursor:
-                cursor.close()
-            if connection:
-                connection.close()
-    else:
-        # For other supported checkpointer(i.e. inmemory) we don't need cleanup
-        pass
 
 def canonical_rag(query: str, conv_history: list)  -> str:
     """Use this for answering generic queries about products, specifications, warranties, usage, and issues."""

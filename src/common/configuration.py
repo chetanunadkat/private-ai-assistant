@@ -128,53 +128,38 @@ class CacheConfig(ConfigWizard):
 class LLMConfig(ConfigWizard):
     """Configuration class for the llm connection.
 
-    :cvar server_url: The location of the llm server hosting the model.
-    :cvar model_name: The name of the hosted model.
+    :cvar model_name: The name of the OpenAI model.
+    :cvar model_engine: The type of model engine (openai).
     """
 
-    server_url: str = configfield(
-        "server_url",
-        default="",
-        help_txt="The location of the Triton server hosting the llm model.",
-    )
     model_name: str = configfield(
         "model_name",
-        default="ensemble",
-        help_txt="The name of the hosted model.",
+        default="gpt-4o-2024-05-13",
+        help_txt="The name of the OpenAI model.",
     )
     model_engine: str = configfield(
         "model_engine",
-        default="nvidia-ai-endpoints",
-        help_txt="The server type of the hosted model. Allowed values are nvidia-ai-endpoints",
-    )
-    model_name_pandas_ai: str = configfield(
-        "model_name_pandas_ai",
-        default="ai-mixtral-8x7b-instruct",
-        help_txt="The name of the ai catalog model to be used with PandasAI agent",
+        default="openai",
+        help_txt="The server type of the hosted model. Allowed values are openai",
     )
 
 @configclass
 class TextSplitterConfig(ConfigWizard):
     """Configuration class for the Text Splitter.
 
-    :cvar chunk_size: Chunk size for text splitter. Tokens per chunk in token-based splitters.
-    :cvar chunk_overlap: Text overlap in text splitter.
+    :cvar chunk_size: Chunk size for text splitter in characters.
+    :cvar chunk_overlap: Number of characters to overlap between chunks.
     """
 
-    model_name: str = configfield(
-        "model_name",
-        default="Snowflake/snowflake-arctic-embed-l",
-        help_txt="The name of Sentence Transformer model used for SentenceTransformer TextSplitter.",
-    )
     chunk_size: int = configfield(
         "chunk_size",
-        default=510,
-        help_txt="Chunk size for text splitting.",
+        default=1000,
+        help_txt="Chunk size for text splitting in characters.",
     )
     chunk_overlap: int = configfield(
         "chunk_overlap",
         default=200,
-        help_txt="Overlapping text length for splitting.",
+        help_txt="Number of characters to overlap between chunks.",
     )
 
 
@@ -182,51 +167,25 @@ class TextSplitterConfig(ConfigWizard):
 class EmbeddingConfig(ConfigWizard):
     """Configuration class for the Embeddings.
 
-    :cvar model_name: The name of the huggingface embedding model.
+    :cvar model_name: The name of the embedding model.
+    :cvar model_engine: The type of model engine (openai or huggingface).
+    :cvar dimensions: The dimensions of the embeddings.
     """
 
     model_name: str = configfield(
         "model_name",
-        default="snowflake/arctic-embed-l",
-        help_txt="The name of huggingface embedding model.",
+        default="text-embedding-3-small",
+        help_txt="The name of the embedding model.",
     )
     model_engine: str = configfield(
         "model_engine",
-        default="nvidia-ai-endpoints",
-        help_txt="The server type of the hosted model. Allowed values are hugginface",
+        default="openai",
+        help_txt="The server type of the hosted model. Allowed values are openai, huggingface",
     )
     dimensions: int = configfield(
         "dimensions",
-        default=1024,
+        default=1536,
         help_txt="The required dimensions of the embedding model. Currently utilized for vector DB indexing.",
-    )
-    server_url: str = configfield(
-        "server_url",
-        default="",
-        help_txt="The url of the server hosting nemo embedding model",
-    )
-
-@configclass
-class RankingConfig(ConfigWizard):
-    """Configuration class for the Re-ranking.
-
-    :cvar model_name: The name of the Ranking model.
-    """
-
-    model_name: str = configfield(
-        "model_name",
-        default="nv-rerank-qa-mistral-4b:1",
-        help_txt="The name of Ranking model.",
-    )
-    model_engine: str = configfield(
-        "model_engine",
-        default="nvidia-ai-endpoints",
-        help_txt="The server type of the hosted model. Allowed values are nvidia-ai-endpoints",
-    )
-    server_url: str = configfield(
-        "server_url",
-        default="",
-        help_txt="The url of the server hosting nemo Ranking model",
     )
 
 @configclass
@@ -247,17 +206,6 @@ class RetrieverConfig(ConfigWizard):
         default=0.25,
         help_txt="The minimum confidence score for the retrieved values to be considered",
     )
-    nr_url: str = configfield(
-        "nr_url",
-        default='http://retrieval-ms:8000',
-        help_txt="The nemo retriever microservice url",
-    )
-    nr_pipeline: str = configfield(
-        "nr_pipeline",
-        default='ranked_hybrid',
-        help_txt="The name of the nemo retriever pipeline one of ranked_hybrid or hybrid",
-    )
-
 
 @configclass
 class AppConfig(ConfigWizard):
@@ -269,10 +217,8 @@ class AppConfig(ConfigWizard):
     :type llm: LLMConfig
     :cvar text_splitter: The configuration for text splitter
     :type text_splitter: TextSplitterConfig
-    :cvar embeddings: The configuration for huggingface embeddings
+    :cvar embeddings: The configuration for embeddings
     :type embeddings: EmbeddingConfig
-    :cvar prompts: The Prompts template for RAG and Chat
-    :type prompts: PromptsConfig
     """
 
     vector_store: VectorStoreConfig = configfield(
@@ -316,12 +262,6 @@ class AppConfig(ConfigWizard):
         env=False,
         help_txt="The configuration of embedding model.",
         default=EmbeddingConfig(),
-    )
-    ranking: RankingConfig = configfield(
-        "ranking",
-        env=False,
-        help_txt="The configuration of ranking model.",
-        default=RankingConfig(),
     )
     retriever: RetrieverConfig = configfield(
         "retriever",

@@ -1,25 +1,18 @@
-include:
-  - path:
-    - nims.yaml
-
 services:
   # =======================
   # Agent Services
   # =======================
   agent-chain-server:
     container_name: agent-chain-server
-    image: nvcr.io/nvidia/blueprint/aiva-customer-service-agent:1.1.0
     build:
-      # Set context to repo's root directory
       context: ../../
       dockerfile: src/agent/Dockerfile
     command: --port 8081 --host 0.0.0.0 --workers 1 --loop asyncio
     environment:
       EXAMPLE_PATH: './src/agent'
-      #APP_LLM_MODELNAME: ${APP_LLM_MODELNAME:-"meta/llama-3.1-70b-instruct"}
-      APP_LLM_MODELNAME: ${APP_LLM_MODELNAME:-"meta/llama-3.1-405b-instruct"}
-      APP_LLM_MODELENGINE: nvidia-ai-endpoints
-      APP_LLM_SERVERURL: ${APP_LLM_SERVERURL:-""}
+      APP_LLM_MODELNAME: "gpt-4o-2024-05-13"
+      APP_LLM_MODELENGINE: openai
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       # Cache name to store user conversation
       # supported type inmemory, redis
       APP_CACHE_NAME: ${APP_CACHE_NAME:-"redis"}
@@ -30,8 +23,7 @@ services:
       APP_DATABASE_URL: ${APP_DATABASE_URL:-"postgres:5432"}
       # Checkpointer name to store intermediate state of conversation
       # supported type postgres, inmemory
-      APP_CHECKPOINTER_NAME: ${APP_CHECKPOINTER_NAME:-"postgres"}
-      APP_CHECKPOINTER_URL: ${APP_CHECKPOINTER_URL:-"postgres:5432"}
+      APP_CHECKPOINTER_NAME: ${APP_CHECKPOINTER_NAME:-"inmemory"}
       # Postgres config
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
@@ -42,10 +34,8 @@ services:
       CUSTOMER_DATA_DB: ${CUSTOMER_DATA_DB:-customer_data}
       CANONICAL_RAG_URL: http://unstructured-retriever:8081
       STRUCTURED_RAG_URI: http://structured-retriever:8081
-      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
       GRAPH_RECURSION_LIMIT: 20
-      #GRAPH_TIMEOUT_IN_SEC: 20 # with meta/llama-3.1-70b-instruct
-      GRAPH_TIMEOUT_IN_SEC: 50 # with meta/llama-3.1-405b-instruct
+      GRAPH_TIMEOUT_IN_SEC: 20
       RETURN_WINDOW_CURRENT_DATE: '2024-10-23' # Leave it empty to get the current date
       RETURN_WINDOW_THRESHOLD_DAYS: 30
       # Log level for server, supported level NOTSET, DEBUG, INFO, WARN, ERROR, CRITICAL
@@ -63,7 +53,6 @@ services:
     - postgres
     - redis
 
-
   # =======================
   # UI and related services for Agent Interface
   # =======================
@@ -78,9 +67,8 @@ services:
     environment:
       AGENT_SERVER_URL: ${AGENT_SERVER_URL:-http://agent-chain-server:8081}
       ANALYTICS_SERVER_URL: ${ANALYTICS_SERVER_URL:-http://analytics-server:8081}
-      #REQUEST_TIMEOUT: 320 # with meta/llama-3.1-70b-instruct
-      REQUEST_TIMEOUT: 800  # with meta/llama-3.1-405b-instruct
-    restart: unless-stopped  # Optional: Automatically restart the container unless it is stopped
+      REQUEST_TIMEOUT: 320
+    restart: unless-stopped
     depends_on:
     - agent-chain-server
 
@@ -91,7 +79,7 @@ services:
       - INFERENCE_ORIGIN=http://api-gateway-server:9000
     ports:
       - "3001:3001"
-    restart: unless-stopped  # Optional: Automatically restart the container unless it is stopped
+    restart: unless-stopped
     depends_on:
     - api-gateway-server
 
@@ -100,18 +88,15 @@ services:
   # =======================
   analytics-server:
     container_name: analytics-server
-    image: nvcr.io/nvidia/blueprint/aiva-customer-service-analytics:1.1.0
     build:
-      # Set context to repo's root directory
       context: ../../
       dockerfile: src/analytics/Dockerfile
     command: --port 8081 --host 0.0.0.0 --workers 1
     environment:
       EXAMPLE_PATH: './src/analytics'
-      #APP_LLM_MODELNAME: ${APP_LLM_MODELNAME:-"meta/llama-3.1-70b-instruct"}
-      APP_LLM_MODELNAME: ${APP_LLM_MODELNAME:-"meta/llama-3.1-405b-instruct"}
-      APP_LLM_MODELENGINE: nvidia-ai-endpoints
-      APP_LLM_SERVERURL: ${APP_LLM_SERVERURL:-""}
+      APP_LLM_MODELNAME: "gpt-4o-2024-05-13"
+      APP_LLM_MODELENGINE: openai
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       # Database name to store user conversation/summary
       # supported type inmemory, redis
       APP_DATABASE_NAME: ${APP_DATABASE_NAME:-"postgres"}
@@ -124,7 +109,6 @@ services:
       CUSTOMER_DATA_DB: ${CUSTOMER_DATA_DB:-customer_data}
       # Store summary/sentiment in database
       PERSIST_DATA: ${PERSIST_DATA:-true}
-      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
       # Log level for server, supported level NOTSET, DEBUG, INFO, WARN, ERROR, CRITICAL
       LOGLEVEL: ${LOGLEVEL:-INFO}
     ports:
@@ -136,74 +120,44 @@ services:
       postgres:
         condition: service_healthy
 
-
   # =======================
   # Retriever Microservices
   # =======================
   # Fetch relevant document from vectorstore
   unstructured-retriever:
     container_name: unstructured-retriever
-    image: nvcr.io/nvidia/blueprint/aiva-customer-service-unstructured-retriever:1.1.0
     build:
-      # Set context to repo's root directory
       context: ../../
       dockerfile: src/retrievers/Dockerfile
       args:
-        # Build args, used to copy relevant directory inside the container
         EXAMPLE_PATH: 'src/retrievers/unstructured_data'
-    # start the server on port 8081
     command: --port 8081 --host 0.0.0.0 --workers 1
     environment:
-      # Path to example directory relative to GenerativeAIExamples/RAG/examples
       EXAMPLE_PATH: 'src/retrievers/unstructured_data'
-      # URL on which vectorstore is hosted
       APP_VECTORSTORE_URL: "http://milvus:19530"
-      # Type of vectordb used to store embedding supported type milvus, pgvector
       APP_VECTORSTORE_NAME: "milvus"
-      # url on which llm model is hosted. If "", Nvidia hosted API is used
-      #APP_LLM_MODELNAME: ${APP_LLM_MODELNAME:-"meta/llama-3.1-70b-instruct"}
-      APP_LLM_MODELNAME: ${APP_LLM_MODELNAME:-"meta/llama-3.1-405b-instruct"}
-      # embedding model engine used for inference, supported type nvidia-ai-endpoints, huggingface
-      APP_LLM_MODELENGINE: nvidia-ai-endpoints
-      # url on which llm model is hosted. If "", Nvidia hosted API is used
-      APP_LLM_SERVERURL: ${APP_LLM_SERVERURL:-""}
-      APP_EMBEDDINGS_MODELNAME: ${APP_EMBEDDINGS_MODELNAME:-nvidia/nv-embedqa-e5-v5}
-      # embedding model engine used for inference, supported type nvidia-ai-endpoints
-      APP_EMBEDDINGS_MODELENGINE: ${APP_EMBEDDINGS_MODELENGINE:-nvidia-ai-endpoints}
-      # url on which embedding model is hosted. If "", Nvidia hosted API is used
-      APP_EMBEDDINGS_SERVERURL: ${APP_EMBEDDINGS_SERVERURL:-""}
-      APP_RANKING_MODELNAME: ${APP_RANKING_MODELNAME:-"nvidia/nv-rerankqa-mistral-4b-v3"} # Leave it blank to avoid using ranking
-      # ranking engine used for inference, supported type nvidia-ai-endpoints
-      APP_RANKING_MODELENGINE: ${APP_RANKING_MODELENGINE:-nvidia-ai-endpoints}
-      # url on which re-ranking model is hosted. If "", Nvidia hosted API is used
-      APP_RANKING_SERVERURL: ${APP_RANKING_SERVERURL:-""}
-      # text splitter model name, it's fetched from huggingface
-      APP_TEXTSPLITTER_MODELNAME: Snowflake/snowflake-arctic-embed-l
+      APP_LLM_MODELNAME: "gpt-4o-2024-05-13"
+      APP_LLM_MODELENGINE: openai
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      APP_EMBEDDINGS_MODELNAME: "text-embedding-3-small"
+      APP_EMBEDDINGS_MODELENGINE: openai
       APP_TEXTSPLITTER_CHUNKSIZE: 506
       APP_TEXTSPLITTER_CHUNKOVERLAP: 200
-      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
-      # vectorstore collection name to store embeddings
       COLLECTION_NAME: ${COLLECTION_NAME:-unstructured_data}
       APP_RETRIEVER_TOPK: 4
       APP_RETRIEVER_SCORETHRESHOLD: 0.25
-      # Number of documents to be retrieved from retriever when reranking model is enabled
-      # This will be then send to re ranker to get `APP_RETRIEVER_TOPK` documents
       VECTOR_DB_TOPK: 20
-      # Log level for server, supported level NOTSET, DEBUG, INFO, WARN, ERROR, CRITICAL
       LOGLEVEL: ${LOGLEVEL:-INFO}
     ports:
     - "8086:8081"
     expose:
     - "8081"
-    shm_size: 5gb
     depends_on:
     - milvus
-
 
   # Fetch user information form database
   structured-retriever:
     container_name: structured-retriever
-    image: nvcr.io/nvidia/blueprint/aiva-customer-service-structured-retriever:1.1.0
     build:
       context: ../../
       dockerfile: src/retrievers/Dockerfile
@@ -212,20 +166,16 @@ services:
     command: --port 8081 --host 0.0.0.0 --workers 1
     environment:
       EXAMPLE_PATH: 'src/retrievers/structured_data'
-      #APP_LLM_MODELNAME: ${APP_LLM_MODELNAME:-meta/llama-3.1-70b-instruct}
-      APP_LLM_MODELNAME: ${APP_LLM_MODELNAME:-meta/llama-3.1-405b-instruct}
-      APP_LLM_MODELENGINE: nvidia-ai-endpoints
-      APP_LLM_SERVERURL: ${APP_LLM_SERVERURL:-""}
-      APP_EMBEDDINGS_MODELNAME: ${APP_EMBEDDINGS_MODELNAME:-nvidia/nv-embedqa-e5-v5}
-      APP_EMBEDDINGS_MODELENGINE: ${APP_EMBEDDINGS_MODELENGINE:-nvidia-ai-endpoints}
-      APP_EMBEDDINGS_SERVERURL: ${APP_EMBEDDINGS_SERVERURL:-""}
+      APP_LLM_MODELNAME: "gpt-4o-2024-05-13"
+      APP_LLM_MODELENGINE: openai
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      APP_EMBEDDINGS_MODELNAME: "text-embedding-3-small"
+      APP_EMBEDDINGS_MODELENGINE: openai
       APP_PROMPTS_CHATTEMPLATE: "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Please ensure that your responses are positive in nature."
       APP_PROMPTS_RAGTEMPLATE: "You are a helpful AI assistant named Envie. You will reply to questions only based on the context that you are provided. If something is out of context, you will refrain from replying and politely decline to respond to the user."
-      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
       COLLECTION_NAME: ${COLLECTION_NAME:-structured_data}
       APP_VECTORSTORE_URL: "http://milvus:19530"
       APP_VECTORSTORE_NAME: "milvus"
-      # Database name to store user purchase history, only postgres is supported
       APP_DATABASE_NAME: ${APP_DATABASE_NAME:-"postgres"}
       APP_DATABASE_URL: ${APP_DATABASE_URL:-"postgres:5432"}
       POSTGRES_USER: ${POSTGRES_USER:-postgres_readonly}
@@ -237,16 +187,12 @@ services:
     - "8087:8081"
     expose:
     - "8081"
-    shm_size: 5gb
     depends_on:
       postgres:
-            condition: service_healthy
-            required: false
-      milvus:
-        condition: service_healthy
-      nemollm-embedding:
         condition: service_healthy
         required: false
+      milvus:
+        condition: service_healthy
 
   # =======================
   # Database Services - User purchase history and permanently store conversation details
@@ -353,12 +299,11 @@ services:
 
   milvus:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.4.15-gpu
+    image: milvusdb/milvus:v2.4.15
     command: ["milvus", "run", "standalone"]
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9010
-      KNOWHERE_GPU_MEM_POOL_SIZE: 2048;4096
     volumes:
       - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
     ports:
@@ -375,13 +320,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: ["gpu"]
-              device_ids: ['${VECTORSTORE_GPU_DEVICE_ID:-0}']
 
 
 networks:
