@@ -1,8 +1,0 @@
-Product: GIFT BAG
-Category: Bags
-Price: $2.1
-Description: Premium weight matte laminated medium gift bag with green handles and cardboard bottom insert. Green tissue paper included. 
-
-Product Details:
-Medium: 13x5x10
-Large: 16x6x12

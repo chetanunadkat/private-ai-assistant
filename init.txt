@@ -1,0 +1,158 @@
+CREATE SCHEMA IF NOT EXISTS du_products;
+
+-- Set search path
+SET search_path TO du_products;
+
+-- Enums
+CREATE TYPE currency_type AS ENUM ('AED', 'USD');
+CREATE TYPE stock_status AS ENUM ('IN_STOCK', 'OUT_OF_STOCK', 'COMING_SOON');
+CREATE TYPE product_condition AS ENUM ('NEW', 'REFURBISHED', 'USED');
+
+-- Core tables
+CREATE TABLE brands (
+    brand_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    logo_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE categories (
+    category_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    parent_id INTEGER REFERENCES categories(category_id),
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    sku VARCHAR(100) UNIQUE NOT NULL,
+    brand_id INTEGER REFERENCES brands(brand_id),
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    base_price DECIMAL(10,2) NOT NULL,
+    currency currency_type DEFAULT 'AED',
+    vat_percentage DECIMAL(5,2) DEFAULT 5.00,
+    stock_status stock_status DEFAULT 'IN_STOCK',
+    condition product_condition DEFAULT 'NEW',
+    is_bundle BOOLEAN DEFAULT FALSE,
+    is_featured BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Product categorization
+CREATE TABLE product_categories (
+    product_id INTEGER REFERENCES products(product_id),
+    category_id INTEGER REFERENCES categories(category_id),
+    PRIMARY KEY (product_id, category_id)
+);
+
+-- Product variants and specifications
+CREATE TABLE product_variants (
+    variant_id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id),
+    sku_variant VARCHAR(100) UNIQUE NOT NULL,
+    color VARCHAR(100),
+    storage_capacity VARCHAR(50),
+    retail_price DECIMAL(10,2) NOT NULL,
+    monthly_installment_price DECIMAL(10,2),
+    installment_months INTEGER,
+    stock_quantity INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE specifications (
+    spec_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    category_id INTEGER REFERENCES categories(category_id),
+    is_filterable BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE product_specifications (
+    product_id INTEGER REFERENCES products(product_id),
+    spec_id INTEGER REFERENCES specifications(spec_id),
+    value TEXT NOT NULL,
+    PRIMARY KEY (product_id, spec_id)
+);
+
+-- Media and assets
+CREATE TABLE product_images (
+    image_id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id),
+    variant_id INTEGER REFERENCES product_variants(variant_id),
+    image_url TEXT NOT NULL,
+    is_primary BOOLEAN DEFAULT FALSE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Promotions and bundles
+CREATE TABLE promotions (
+    promotion_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_date TIMESTAMP WITH TIME ZONE,
+    end_date TIMESTAMP WITH TIME ZONE,
+    discount_type VARCHAR(50),
+    discount_value DECIMAL(10,2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE product_promotions (
+    product_id INTEGER REFERENCES products(product_id),
+    promotion_id INTEGER REFERENCES promotions(promotion_id),
+    PRIMARY KEY (product_id, promotion_id)
+);
+
+CREATE TABLE bundle_products (
+    bundle_id INTEGER REFERENCES products(product_id),
+    product_id INTEGER REFERENCES products(product_id),
+    quantity INTEGER DEFAULT 1,
+    discount_amount DECIMAL(10,2) DEFAULT 0,
+    PRIMARY KEY (bundle_id, product_id)
+);
+
+-- Payment and installment plans
+CREATE TABLE installment_plans (
+    plan_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    months INTEGER NOT NULL,
+    interest_rate DECIMAL(5,2) DEFAULT 0,
+    minimum_amount DECIMAL(10,2),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE product_installment_plans (
+    product_id INTEGER REFERENCES products(product_id),
+    plan_id INTEGER REFERENCES installment_plans(plan_id),
+    monthly_price DECIMAL(10,2) NOT NULL,
+    PRIMARY KEY (product_id, plan_id)
+);
+
+-- Metadata and tracking
+CREATE TABLE product_metadata (
+    metadata_id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(product_id),
+    key VARCHAR(100) NOT NULL,
+    value TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (product_id, key)
+);
+
+-- Indexes
+CREATE INDEX idx_products_sku ON products(sku);
+CREATE INDEX idx_product_variants_sku ON product_variants(sku_variant);
+CREATE INDEX idx_products_brand ON products(brand_id);
+CREATE INDEX idx_product_variants_product ON product_variants(product_id);
+CREATE INDEX idx_product_categories_category ON product_categories(category_id);
+CREATE INDEX idx_product_specifications_spec ON product_specifications(spec_id); 

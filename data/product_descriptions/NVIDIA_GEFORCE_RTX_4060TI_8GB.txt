@@ -1,8 +1,0 @@
-Product: NVIDIA® GEFORCE™ RTX 4060TI 8GB
-Category: NVIDIA Electronics
-Price: $299.0
-Description: Game, stream, create. The GeForce RTX™ 4060 Ti lets you take on the latest games and apps with the ultra-efficient NVIDIA Ada Lovelace architecture. Experience immersive, AI-accelerated gaming with ray tracing and DLSS 3, and supercharge your creative process and productivity with NVIDIA Studio
-
-CUDA Cores: 4352
-Boost Clock: 2.54 GHz
-Memory Configuration: 8GB GDDR6

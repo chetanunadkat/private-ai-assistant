@@ -1,7 +1,0 @@
-Product: NVIDIA GEFORCE HAT
-Category: Apparel
-Price: $9.5
-Description: Light weight brushed cotton twill
-Polysnap closure
-Adjustable
-Structured

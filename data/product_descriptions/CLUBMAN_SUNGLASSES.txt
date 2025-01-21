@@ -1,8 +1,0 @@
-Product: CLUBMAN SUNGLASSES
-Category: Lifestyle
-Price: $12.0
-Description: Vintage design sunglasses fully customized for NVIDIA
-Custom pouch
-Metallic lenses
-UV400 
-Glossy finish

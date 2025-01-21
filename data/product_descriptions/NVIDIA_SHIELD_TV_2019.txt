@@ -1,4 +1,0 @@
-Product: NVIDIA® SHIELD™ TV 2019
-Category: NVIDIA Electronics
-Price: $199.0
-Description: NVIDIA® SHIELD® TV is the ultimate streaming media player for the modern living room. Enjoy a cinematic experience with stunning visuals brought to you by Dolby Vision HDR, and immersive audio with Dolby Atmos surround sound. The new SHIELD TV is compact, stealth, and designed to disappear behind your entertainment center, right along with your cables. Now powered by the latest NVIDIA Tegra X1+ processor, SHIELD TV is faster, and smarter. Level up. Experience more.
