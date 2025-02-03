@@ -19,7 +19,7 @@ based on session_id using postgres database
 """
 
 from typing import Optional, List
-from sqlalchemy import create_engine, Column, String, DateTime, JSON, Float
+from sqlalchemy import create_engine, Column, String, DateTime, JSON, Float, func, insert
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
@@ -354,3 +354,15 @@ class PostgresClient:
                 "last_conversation_time": conv.last_conversation_time
             })
         return result
+def store_conversation(self, session_id: str, conversation_history: list) -> bool:
+    stmt = insert(ConversationHistory).values(
+        session_id=session_id,
+        conversation_hist=conversation_history,
+        start_time=func.now()
+    ).on_conflict_do_update(
+        index_elements=[ConversationHistory.session_id],
+        set_={
+            ConversationHistory.conversation_hist: conversation_history,
+            ConversationHistory.end_time: func.now()
+        }
+    )

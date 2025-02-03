@@ -105,3 +105,12 @@ class SessionManager:
 
     def get_conversations_in_last_h_hours(self, hours: int):
         return self.memory.get_conversations_in_last_h_hours(hours)
+def save_conversation(
+    self, session_id: str, conversation: List
+):
+    if not self.is_session(session_id):
+        self.create_session(session_id)
+        
+    session = self.sessions[session_id]
+    session["conversation_hist"] = conversation
+    session["end_time"]

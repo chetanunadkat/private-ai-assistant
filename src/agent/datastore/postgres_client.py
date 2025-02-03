@@ -19,7 +19,7 @@ based on session_id using postgres database
 """
 
 from typing import Optional
-from sqlalchemy import create_engine, Column, String, DateTime, JSON
+from sqlalchemy import create_engine, Column, String, DateTime, JSON, Float, JSONB, func, insert
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -43,34 +43,38 @@ Session = sessionmaker(bind=engine)
 
 class ConversationHistory(Base):
     __tablename__ = 'conversation_history'
-
-    session_id = Column(String, primary_key=True)
-    user_id = Column(String, nullable=True)
-    last_conversation_time = Column(DateTime)
-    start_conversation_time = Column(DateTime)
-    conversation_data = Column(JSON)
+    
+    session_id = Column(String(255), primary_key=True)
+    conversation_hist = Column(JSONB)
+    create_time = Column(DateTime, default=func.now())
+    last_accessed = Column(DateTime, default=func.now(), onupdate=func.now())
 
 class PostgresClient:
     def __init__(self):
         self.engine = engine
         Base.metadata.create_all(self.engine)
 
-    def store_conversation(self, session_id: str, user_id: Optional[str], conversation_history: list, last_conversation_time: str, start_conversation_time: str):
+    def store_conversation(self, session_id: str, conversation_history: list) -> bool:
         session = Session()
         try:
-            # Store last_conversation_time and start_conversation_time in datetime format for easy filtering
-            conversation = ConversationHistory(
+            stmt = insert(ConversationHistory).values(
                 session_id=session_id,
-                user_id=user_id if user_id else None,
-                last_conversation_time=datetime.fromtimestamp(float(last_conversation_time)),
-                start_conversation_time=datetime.fromtimestamp(float(start_conversation_time)),
-                conversation_data=json.dumps(conversation_history)
+                conversation_hist=conversation_history,
+                last_accessed=func.now()
+            ).on_conflict_do_update(
+                index_elements=[ConversationHistory.session_id],
+                set_={
+                    ConversationHistory.conversation_hist: conversation_history,
+                    ConversationHistory.last_accessed: func.now()
+                }
             )
-            session.merge(conversation)
+            session.execute(stmt)
             session.commit()
+            return True
         except Exception as e:
             print(f"Error storing conversation: {e}")
             session.rollback()
+            return False
         finally:
             session.close()
 

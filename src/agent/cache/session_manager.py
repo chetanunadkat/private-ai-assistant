@@ -18,6 +18,7 @@ Manager conversation history return relavant conversation history
 based on session_id
 """
 
+from datetime import datetime
 from typing import List, Optional, Dict
 
 from src.common.utils import get_config
@@ -50,8 +51,8 @@ class SessionManager:
         return self.memory.get_k_conversation(session_id, k_turn)
 
 
-    def save_conversation(self, session_id: str, user_id: Optional[str], conversation: List) -> bool:
-        return self.memory.save_conversation(session_id, user_id, conversation)
+    def save_conversation(self, session_id: str, conversation: List) -> bool:
+        return self.memory.save_conversation(session_id, conversation)
 
 
     def is_session(self, session_id: str) -> bool:
@@ -70,6 +71,13 @@ class SessionManager:
         """Delete conversation for given session id"""
         return self.memory.delete_conversation(session_id)
 
-    def create_session(self, session_id: str, user_id: str = ""):
+    def create_session(self, session_id: str):
         """Create a entry for given session id"""
-        return self.memory.create_session(session_id, user_id)
+        return self.memory.create_session(session_id)
+def create_session(self, session_id: str):
+    if not self.is_session(session_id):
+        self.sessions[session_id] = {
+            "conversation_hist": [],
+            "start_time": datetime.now().isoformat(),
+            "end_time": None
+        }

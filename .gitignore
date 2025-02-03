@@ -1,3 +1,4 @@
 deploy/compose/volumes/
 notebooks/.ipynb_checkpoints
 deploy/compose/.env
+.aider*

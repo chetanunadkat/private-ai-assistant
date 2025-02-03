@@ -1,3 +1,20 @@
+-- Create tables
+CREATE TABLE IF NOT EXISTS conversation_history (
+    session_id VARCHAR(255) PRIMARY KEY,
+    conversation_hist JSONB,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS session_summary (
+    session_id VARCHAR(255) PRIMARY KEY,
+    summary TEXT,
+    sentiment VARCHAR(50),
+    start_time TIMESTAMP,
+    end_time TIMESTAMP,
+    feedback FLOAT
+);
+
 -- Create a new read-only user
 CREATE USER "postgres_readonly" WITH PASSWORD 'readonly_password';
 
