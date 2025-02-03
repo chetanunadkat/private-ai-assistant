@@ -8,7 +8,7 @@ ENV DEBIAN_FRONTEND noninteractive
 
 # Install required ubuntu packages for setting up python 3.10
 RUN apt update && \
-    apt install -y curl software-properties-common && \
+    apt install -y curl software-properties-common tzdata && \
     add-apt-repository ppa:deadsnakes/ppa && \
     apt update && apt install -y python3.10 && \
     apt-get clean

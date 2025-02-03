@@ -40,11 +40,11 @@ port = parsed_url.port
 
 vaana_client.connect_to_postgres(
     host=parsed_url.hostname, 
-    dbname=os.getenv("POSTGRES_DB",'customer_data'), 
-    user=os.getenv('POSTGRES_USER', 'postgres_readonly'), 
-    password= os.getenv('POSTGRES_PASSWORD', 'readonly_password'), 
+    dbname=os.getenv("POSTGRES_DBNAME",'postgres'), 
+    user=os.getenv('POSTGRES_USER', None), 
+    password=os.getenv('POSTGRES_PASSWORD', None), 
     port=parsed_url.port
-    )
+)
 # Do Training from static schmea
 vaana_client.do_training(method="schema")
 

@@ -72,16 +72,16 @@ services:
     depends_on:
     - agent-chain-server
 
-  agent-frontend:
-    image: nvcr.io/nvidia/blueprint/aiva-customer-service-ui:1.1.0
-    container_name: agent-frontend
-    environment:
-      - INFERENCE_ORIGIN=http://api-gateway-server:9000
-    ports:
-      - "3001:3001"
-    restart: unless-stopped
-    depends_on:
-    - api-gateway-server
+  # agent-frontend:
+  #   image: nvcr.io/nvidia/blueprint/aiva-customer-service-ui:1.1.0
+  #   container_name: agent-frontend
+  #   environment:
+  #     - INFERENCE_ORIGIN=http://api-gateway-server:9000
+  #   ports:
+  #     - "3001:3001"
+  #   restart: unless-stopped
+  #   depends_on:
+  #   - api-gateway-server
 
   # =======================
   # Analytics Services - summary/sentiment and similar APIs are exposed as part of analytics MS

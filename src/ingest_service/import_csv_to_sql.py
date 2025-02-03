@@ -1,18 +1,3 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import csv
 import re
 import psycopg2
@@ -22,7 +7,7 @@ import argparse
 
 # Set up the argument parser
 parser = argparse.ArgumentParser(description='Database connection parameters.')
-parser.add_argument('--dbname', type=str, default='customer_data', help='Database name')
+parser.add_argument('--dbname', type=str, default='du_products', help='Database name')
 parser.add_argument('--user', type=str, default='postgres', help='Database user')
 parser.add_argument('--password', type=str, default='password', help='Database password')
 parser.add_argument('--host', type=str, default='localhost', help='Database host')
@@ -41,83 +26,101 @@ db_params = {
 }
 
 # CSV file path
-csv_file_path = './data/orders.csv'
+csv_file_path = './data/gear-store.csv'
 
 # Connect to the database
 conn = psycopg2.connect(**db_params)
 cur = conn.cursor()
 
-# Drop the table if it exists
-drop_table_query = '''
-DROP TABLE IF EXISTS customer_data;
-'''
-
 # Create the table if it doesn't exist
-create_table_query = '''
-CREATE TABLE IF NOT EXISTS customer_data (
-    customer_id INTEGER NOT NULL,
-    order_id INTEGER NOT NULL,
-    product_name VARCHAR(255) NOT NULL,
-    product_description VARCHAR NOT NULL,
-    order_date DATE NOT NULL,
-    quantity INTEGER NOT NULL,
-    order_amount DECIMAL(10, 2) NOT NULL,
-    order_status VARCHAR(50),
-    return_status VARCHAR(50),
-    return_start_date DATE,
-    return_received_date DATE,
-    return_completed_date DATE,
-    return_reason VARCHAR(255),
-    notes TEXT,
-    PRIMARY KEY (customer_id, order_id)
-);
-'''
-cur.execute(drop_table_query)
-cur.execute(create_table_query)
+with open("init.txt", "r") as file:
+    create_table_query = file.read()
+    cur.execute(create_table_query)
 
 # Open the CSV file and insert data
-with open(csv_file_path, 'r') as f:
+with open(csv_file_path, 'r', encoding='utf-8') as f:
     reader = csv.reader(f)
     next(reader)  # Skip the header row
 
     for row in reader:
-        # Access columns by index as per the provided structure
-        order_id = int(row[1])  # OrderID
-        customer_id = int(row[0])  # CID (Customer ID)
+        # Extract data from CSV row
+        category, subcategory, name, description, price = row
+        price = float(price)  # Convert price to float
 
-        # Correcting the order date to include time
-        order_date = datetime.strptime(row[4], "%Y-%m-%dT%H:%M:%S")  # OrderDate with time
+        # Insert data into the brands table (assuming NVIDIA is the only brand for now)
+        cur.execute("INSERT INTO du_products.brands (name) VALUES (%s) ON CONFLICT (name) DO NOTHING RETURNING brand_id", ('NVIDIA',))
+        brand_result = cur.fetchone()
+        brand_id = brand_result[0] if brand_result else None
 
-        quantity = int(row[5])  # Quantity
+        # If brand_id is None, fetch the existing brand_id
+        if brand_id is None:
+            cur.execute("SELECT brand_id FROM du_products.brands WHERE name = 'NVIDIA'")
+            brand_id = cur.fetchone()[0]
 
-        # Handle optional date fields with time parsing
-        return_start_date = datetime.strptime(row[9], "%Y-%m-%dT%H:%M:%S") if row[9] else None  # ReturnStartDate
-        return_received_date = datetime.strptime(row[10],"%Y-%m-%dT%H:%M:%S") if row[10] else None  # ReturnReceivedDate
-        return_completed_date = datetime.strptime(row[11], "%Y-%m-%dT%H:%M:%S") if row[11] else None  # ReturnCompletedDate
+        # Insert data into the categories table
+        cur.execute("INSERT INTO du_products.categories (name, slug) VALUES (%s, %s) ON CONFLICT (slug) DO NOTHING RETURNING category_id", (category, category.lower().replace(' ', '-')))
+        category_result = cur.fetchone()
+        category_id = category_result[0] if category_result else None
 
-        # Clean product name
-        product_name = re.sub(r'[®™]', '', row[2])  # ProductName
+        # If category_id is None, fetch the existing category_id
+        if category_id is None:
+            cur.execute("SELECT category_id FROM du_products.categories WHERE name = %s", (category,))
+            category_id = cur.fetchone()[0]
 
-        product_description = re.sub(r'[®™]', '', row[3])
-        # OrderAmount as float
-        order_amount = float(row[6].replace(',', ''))
-
-        # Insert data into the database
+        # Insert data into the products table
         cur.execute(
-            '''
-            INSERT INTO customer_data (
-                customer_id, order_id, product_name, product_description, order_date, quantity, order_amount,
-                order_status, return_status, return_start_date, return_received_date,
-                return_completed_date, return_reason, notes
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''',
-            (customer_id, order_id, product_name, product_description, order_date, quantity, order_amount,
-             row[7],  # OrderStatus
-             row[8],  # ReturnStatus
-             return_start_date, return_received_date, return_completed_date,
-             row[12],  # ReturnReason
-             row[13])  # Notes
+            """
+            INSERT INTO du_products.products (sku, brand_id, name, slug, description, base_price, currency, stock_status, condition)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (sku) DO NOTHING
+            RETURNING product_id
+            """,
+            ('SKU-' + name.replace(' ', '-'), brand_id, name, name.lower().replace(' ', '-'), description, price, 'USD', 'IN_STOCK', 'NEW')
         )
+        product_result = cur.fetchone()
+        product_id = product_result[0] if product_result else None
+
+        # If product_id is None, fetch the existing product_id
+        if product_id is None:
+            cur.execute("SELECT product_id FROM du_products.products WHERE name = %s", (name,))
+            product_id = cur.fetchone()[0]
+
+        # Insert data into the product_categories table
+        cur.execute("INSERT INTO du_products.product_categories (product_id, category_id) VALUES (%s, %s) ON CONFLICT (product_id, category_id) DO NOTHING", (product_id, category_id))
+
+        # Insert data into the product_variants table (assuming a default variant for each product)
+        cur.execute(
+            """
+            INSERT INTO du_products.product_variants (product_id, sku_variant, retail_price, stock_quantity)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (product_id, 'VARIANT-' + name.replace(' ', '-'), price, 100)
+        )
+
+        # Insert data into the specifications table
+        cur.execute("INSERT INTO du_products.specifications (name, category_id) VALUES (%s, %s) ON CONFLICT (name) DO NOTHING RETURNING spec_id", ('Specification', category_id))
+        spec_result = cur.fetchone()
+        spec_id = spec_result[0] if spec_result else None
+
+        # If spec_id is None, fetch the existing spec_id
+        if spec_id is None:
+            cur.execute("SELECT spec_id FROM du_products.specifications WHERE name = 'Specification'")
+            spec_id = cur.fetchone()[0]
+
+        # Insert data into the product_specifications table
+        cur.execute("INSERT INTO du_products.product_specifications (product_id, spec_id, value) VALUES (%s, %s, %s)", (product_id, spec_id, 'Value'))
+
+        # Insert data into the product_images table
+        cur.execute(
+            """
+            INSERT INTO du_products.product_images (product_id, image_url, is_primary, sort_order)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (product_id, 'https://via.placeholder.com/150', True, 1)
+        )
+        
+        # Commit after each row
+        conn.commit()
 
 # Commit the changes and close the connection
 conn.commit()
